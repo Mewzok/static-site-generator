@@ -2,6 +2,8 @@ import markdown
 from pathlib import Path
 import frontmatter
 import shutil
+import argparse
+import sys
 
 def generate_index(posts_data, output_folder):
     # sort posts by date
@@ -28,11 +30,37 @@ def generate_index(posts_data, output_folder):
     index_path.write_text(index_output, encoding="utf-8")
     print("Generated: index.html")
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="Generate a static site by converting markdown files to html files."
+    )
+
+    parser.add_argument("input", type=Path, help="Path to the input folder")
+    parser.add_argument("output", type=Path, help="Path to the output folder")
+    parser.add_argument("--clean", action="store_true", help="Clean output folder before creating new files")
+
+    args = parser.parse_args()
+    input_path = args.input
+    output_path = args.output
+    clean = args.clean
+
+    if not input_path.exists():
+        print(f"Error: The folder '{input_path}' does not exist.")
+        sys.exit(1)
+
+    return input_path, output_path, clean
+
+def clean_output(output_folder):
+    if output_folder.exists():
+        shutil.rmtree(output_folder)
+
 def main():
-    input_folder = Path("content")
-    output_folder = Path("site")
+    input_folder, output_folder, clean = parse_arguments()
     count = 0
     posts_data = []
+
+    if clean:
+        clean_output(output_folder)
 
     # obtain template text
     template = Path("template.html").read_text(encoding="utf-8")

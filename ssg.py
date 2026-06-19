@@ -8,27 +8,20 @@ import sys
 SCRIPT_DIR = Path(__file__).resolve().parent
 TEMPLATE_PATH = SCRIPT_DIR / "template.html"
 
-def generate_index(posts_data, output_folder):
+def generate_index(posts_data, output_folder, template):
     # sort posts by date
     sorted_posts = sorted(posts_data)
 
     # dynamically create urls
     list_items = []
     for date, title, url in sorted_posts:
-        if title in ["About Me", "Home"]:
-            continue
-
         item = f'<li><a href="{url}">{title}</a> - {date}</li>'
         list_items.append(item)
 
     links_html = "<ul>\n" + "\n".join(list_items) + "\n</ul>"
 
-    # inject url html into template
-    template = TEMPLATE_PATH.read_text(encoding="utf-8")
-
     index_output = template.replace("{{title}}", "Home").replace("{{content}}", links_html)
 
-    # create template
     index_path = output_folder / "index.html"
     index_path.write_text(index_output, encoding="utf-8")
     print("Successfully generated index.html.")
@@ -91,7 +84,13 @@ def main():
 
         if file_path.is_file() and file_path.suffix == ".md":
             # obtain and split frontmatter
-            post = frontmatter.load(file_path)
+            try:
+                post = frontmatter.load(file_path)
+            except Exception as exc:
+                print(f"Error: Could not parse '{file_path}': {exc}")
+                fail_count += 1
+                continue
+
             title = get_post_field(post, "title", file_path)
             date = get_post_field(post, "date", file_path)
 
@@ -120,8 +119,9 @@ def main():
             # create url for index generation
             url = (f"/{output_path.relative_to(output_folder).as_posix()}")
 
-            # store post data and url for index file later
-            posts_data.append((date, title, url))
+            # store post data and url for index file later only if file should be listed
+            if post.get("listed", True):
+                posts_data.append((date, title, url))
 
         elif file_path.is_file():
             # remove content folder from output
@@ -141,7 +141,7 @@ def main():
     print(f"Successfully converted {count} file(s).")
     if fail_count > 0:
         print(f"Failed to convert {fail_count} file(s).")
-    generate_index(posts_data, output_folder)
+    generate_index(posts_data, output_folder, template)
 
 if __name__ == "__main__":
     main()

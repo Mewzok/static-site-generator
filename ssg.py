@@ -5,7 +5,6 @@ import shutil
 import argparse
 import sys
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 TEMPLATE_PATH = SCRIPT_DIR / "template.html"
 
@@ -32,7 +31,7 @@ def generate_index(posts_data, output_folder):
     # create template
     index_path = output_folder / "index.html"
     index_path.write_text(index_output, encoding="utf-8")
-    print("Successfully generated index.html")
+    print("Successfully generated index.html.")
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -138,11 +137,10 @@ def main():
             shutil.copy(file_path, output_path)
 
         count += 1
-        
 
-    print(f"Successfully created {count} file(s).")
+    print(f"Successfully converted {count} file(s).")
     if fail_count > 0:
-        print(f"Failed to create {fail_count} file(s).")
+        print(f"Failed to convert {fail_count} file(s).")
     generate_index(posts_data, output_folder)
 
 if __name__ == "__main__":

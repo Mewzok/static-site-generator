@@ -5,6 +5,10 @@ import shutil
 import argparse
 import sys
 
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+TEMPLATE_PATH = SCRIPT_DIR / "template.html"
+
 def generate_index(posts_data, output_folder):
     # sort posts by date
     sorted_posts = sorted(posts_data)
@@ -21,14 +25,14 @@ def generate_index(posts_data, output_folder):
     links_html = "<ul>\n" + "\n".join(list_items) + "\n</ul>"
 
     # inject url html into template
-    template = Path("template.html").read_text(encoding="utf-8")
+    template = TEMPLATE_PATH.read_text(encoding="utf-8")
 
     index_output = template.replace("{{title}}", "Home").replace("{{content}}", links_html)
 
     # create template
     index_path = output_folder / "index.html"
     index_path.write_text(index_output, encoding="utf-8")
-    print("Generated: index.html")
+    print("Successfully generated index.html")
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -54,16 +58,33 @@ def clean_output(output_folder):
     if output_folder.exists():
         shutil.rmtree(output_folder)
 
+
+def load_template():
+    if not TEMPLATE_PATH.exists():
+        print(f"Error: Template file '{TEMPLATE_PATH}' does not exist.")
+        sys.exit(1)
+
+    return TEMPLATE_PATH.read_text(encoding="utf-8")
+
+
+def get_post_field(post, field_name, file_path):
+    try:
+        return post[field_name]
+    except KeyError:
+        print(f"Error: Missing '{field_name}' frontmatter in '{file_path}'.")
+        return None
+
 def main():
     input_folder, output_folder, clean = parse_arguments()
     count = 0
+    fail_count = 0
     posts_data = []
 
     if clean:
         clean_output(output_folder)
 
     # obtain template text
-    template = Path("template.html").read_text(encoding="utf-8")
+    template = load_template()
 
     for file_path in input_folder.rglob("*"):
         if file_path.is_dir():
@@ -72,15 +93,21 @@ def main():
         if file_path.is_file() and file_path.suffix == ".md":
             # obtain and split frontmatter
             post = frontmatter.load(file_path)
+            title = get_post_field(post, "title", file_path)
+            date = get_post_field(post, "date", file_path)
+
+            if title is None or date is None:
+                fail_count += 1
+                continue
 
             # convert markdown to html
             html_content = markdown.markdown(post.content)
 
             # inject content into template
-            output = template.replace("{{title}}", str(post['title'])).replace("{{content}}", html_content)
+            output = template.replace("{{title}}", str(title)).replace("{{content}}", html_content)
 
             # remove content folder from output
-            clean_parts = file_path.parts[1:]
+            clean_parts = file_path.relative_to(input_folder).parts
 
             # create output path dynamically with filename
             output_path = output_folder / Path(*clean_parts).with_suffix(".html")
@@ -95,11 +122,11 @@ def main():
             url = (f"/{output_path.relative_to(output_folder).as_posix()}")
 
             # store post data and url for index file later
-            posts_data.append((post['date'], post['title'], url))
+            posts_data.append((date, title, url))
 
         elif file_path.is_file():
             # remove content folder from output
-            clean_parts = file_path.parts[1:]
+            clean_parts = file_path.relative_to(input_folder).parts
 
             # create output path dynamically with filename
             output_path = output_folder / Path(*clean_parts)
@@ -113,7 +140,9 @@ def main():
         count += 1
         
 
-    print(f"Successfully created {count} files.")
+    print(f"Successfully created {count} file(s).")
+    if fail_count > 0:
+        print(f"Failed to create {fail_count} file(s).")
     generate_index(posts_data, output_folder)
 
 if __name__ == "__main__":

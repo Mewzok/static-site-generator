@@ -13,6 +13,10 @@ Each Markdown file should include frontmatter with at least:
 
 Files missing either field are skipped with an error message.
 
+To prevent a file from appearing in the home page's navigation list, a Markdown file can also include in the frontmatter:
+
+* `listed: false`
+
 ## Requirements
 
 * Python 3.10 or newer
